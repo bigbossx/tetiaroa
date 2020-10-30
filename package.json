@@ -1,0 +1,17 @@
+{
+  "name": "tetiaroa",
+  "version": "1.0.0",
+  "description": "a useful multi-language automatic generation tool",
+  "main": "app.js",
+  "dependencies": {
+    "googleapis": "^39.2.0"
+  },
+  "devDependencies": {
+    "rimraf": "^3.0.2"
+  },
+  "scripts": {
+    "start": "rimraf ./lang && node app.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
