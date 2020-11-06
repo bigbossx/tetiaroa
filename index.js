@@ -1,5 +1,6 @@
 const fs = require("fs");
 const readline = require("readline");
+const path = require("path");
 const { google } = require("googleapis");
 const TOKEN_PATH = "token.json";
 
@@ -34,7 +35,10 @@ module.exports = class GoogleSheetTool {
     });
   }
   _greeting() {
-    console.log("\x1b[36m%s\x1b[0m", fs.readFileSync("./logo.txt", "utf-8"));
+    console.log(
+      "\x1b[36m%s\x1b[0m",
+      fs.readFileSync(path.resolve(__dirname, "./logo.txt"), "utf-8")
+    );
   }
   _verifyOptions(options) {
     const { docs = [] } = options;
