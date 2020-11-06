@@ -28,11 +28,14 @@ module.exports = class GoogleSheetTool {
   // }
 
   _main() {
-    fs.readFile("./credentials.json", (err, content) => {
-      if (err) return console.log("Error loading client secret file:", err);
-      // Authorize a client with credentials, then call the Google Docs API.
-      this._authorize(JSON.parse(content), this._listMajors.bind(this));
-    });
+    fs.readFile(
+      path.resolve(__dirname, "./credentials.json"),
+      (err, content) => {
+        if (err) return console.log("Error loading client secret file:", err);
+        // Authorize a client with credentials, then call the Google Docs API.
+        this._authorize(JSON.parse(content), this._listMajors.bind(this));
+      }
+    );
   }
   _greeting() {
     console.log(
@@ -61,7 +64,7 @@ module.exports = class GoogleSheetTool {
     );
 
     // Check if we have previously stored a token.
-    fs.readFile(TOKEN_PATH, (err, token) => {
+    fs.readFile(path.resolve(__dirname, TOKEN_PATH), (err, token) => {
       if (err) return this._getNewToken(oAuth2Client, callback);
       oAuth2Client.setCredentials(JSON.parse(token));
       callback(oAuth2Client);
@@ -85,10 +88,14 @@ module.exports = class GoogleSheetTool {
         if (err) return console.error("Error retrieving access token", err);
         oAuth2Client.setCredentials(token);
         // Store the token to disk for later program executions
-        fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
-          if (err) console.error(err);
-          console.log("\x1b[32m", "Token stored to", TOKEN_PATH);
-        });
+        fs.writeFile(
+          path.resolve(__dirname, TOKEN_PATH),
+          JSON.stringify(token),
+          (err) => {
+            if (err) console.error(err);
+            console.log("\x1b[32m", "Token stored to", TOKEN_PATH);
+          }
+        );
         callback(oAuth2Client);
       });
     });
