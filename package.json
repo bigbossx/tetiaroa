@@ -1,7 +1,11 @@
 {
   "name": "tetiaroa",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "a useful multi-language automatic generation tool",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VisonM/tetiaroa"
+  },
   "main": "app.js",
   "dependencies": {
     "googleapis": "^39.2.0"
@@ -12,6 +16,15 @@
   "scripts": {
     "start": "rimraf ./lang && node app.js"
   },
+  "files": [
+    "index.js",
+    "package.json",
+    "README.md",
+    "index.js",
+    "credentials.json",
+    ".gitignore",
+    "logo.txt"
+  ],
   "author": "",
   "license": "ISC"
 }

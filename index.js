@@ -37,11 +37,15 @@ module.exports = class GoogleSheetTool {
     console.log("\x1b[36m%s\x1b[0m", fs.readFileSync("./logo.txt", "utf-8"));
   }
   _verifyOptions(options) {
-    if (!options.spreadsheetId) {
-      return console.error("options spreadsheetId is required");
-    }
-    if (!options.range) {
-      return console.error("options range is required");
+    const { docs = [] } = options;
+    for (let i = 0; i < docs.length - 1; i++) {
+      const item = docs[i];
+      if (!item.spreadsheetId) {
+        throw new Error("options spreadsheetId is required");
+      }
+      if (!item.range) {
+        throw new Error("options range is required");
+      }
     }
   }
   _authorize(credentials, callback) {
@@ -92,59 +96,63 @@ module.exports = class GoogleSheetTool {
    * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
    */
   _listMajors(auth) {
-    const {
-      spreadsheetId,
-      range,
-      version,
-      customOutputCallback,
-    } = this.options;
+    const { batch, version, customOutputCallback } = this.options;
     const sheets = google.sheets({ version, auth });
-    sheets.spreadsheets.values.get(
-      {
-        spreadsheetId,
-        range,
-      },
-      (err, res) => {
-        if (err) return console.log("The API returned an error: " + err);
-        const rows = res.data.values;
-        if (rows.length) {
-          let res;
-          if (customOutputCallback) {
-            res = customOutputCallback(rows);
+    let index = 0;
+    let result = {};
+    batch.map(({ spreadsheetId, range, groups }) => {
+      sheets.spreadsheets.values.get(
+        {
+          spreadsheetId,
+          range,
+        },
+        (err, res) => {
+          if (err) return console.log("The API returned an error: " + err);
+          index++;
+          const rows = res.data.values;
+          if (rows.length) {
+            let temp;
+            if (customOutputCallback) {
+              temp = customOutputCallback(rows);
+            } else {
+              temp = this._formatOuputData(rows, groups);
+            }
+            this._merge(temp, result);
+            if (index >= batch.length) {
+              this._generateFile(result);
+            }
           } else {
-            res = this._formatOuputData(rows);
+            console.log("No data found.");
           }
-          this._generateFile(res);
-        } else {
-          console.log("No data found.");
         }
-      }
-    );
+      );
+    });
   }
-  _formatOuputData(data) {
-    const { groups = [], lang } = this.options;
+  _formatOuputData(data, groups = []) {
+    const { lang } = this.options;
     const result = {};
     for (const key in lang) {
       result[key] = {};
     }
-    let index = 0;
 
-    while (groups.length) {
-      const group = groups.shift();
-      if (group <= 1) return;
-      const groupData = data.splice(0, group);
-      for (const key in lang) {
-        result[key][`group${index}`] = groupData.map((row) => row[lang[key]]);
-      }
-      index++;
-    }
-    while (data.length) {
-      const row = data.shift();
-      if (!row[0]) {
-        continue;
-      }
-      for (const key in lang) {
-        this._setProperty(result[key], row[0], row[lang[key]] || "");
+    let index = 0;
+    while (index < data.length) {
+      const group = groups.find((g) => g.range[0] === index);
+      if (group) {
+        const groupData = data.slice(...group.range);
+        for (const key in lang) {
+          result[key][group.key] = groupData.map((row) => row[lang[key]]);
+        }
+        index += group.range[1];
+      } else {
+        for (const key in lang) {
+          const row = data[index];
+          if (!row[0]) {
+            continue;
+          }
+          this._setProperty(result[key], row[0], row[lang[key]] || "");
+        }
+        index++;
       }
     }
     return result;
@@ -152,25 +160,23 @@ module.exports = class GoogleSheetTool {
   _generateFile(result) {
     console.log("👇👇 已获取文档数据 👇👇");
     console.table(result);
-    const { ouput } = this.options;
+    const { ouput, complete } = this.options;
     for (const key in result) {
-      fs.mkdirSync(ouput, { recursive: true });
-      fs.writeFile(
+      if (!fs.existsSync(ouput)) {
+        fs.mkdirSync(ouput, { recursive: true });
+      }
+      fs.writeFileSync(
         `${ouput}/${key}.js`,
         `export default ${JSON.stringify(result[key], null, 2)}`,
-        "utf8",
-        (err) => {
-          if (err) {
-            return console.error(err);
-          }
-          console.log(
-            "\x1b[32m",
-            " 🌟  👋  💋  🐔 Successfully generate File🌟 :",
-            `${ouput}/${key}.js`
-          );
-        }
+        "utf8"
+      );
+      console.log(
+        "\x1b[32m",
+        " 🌟  👋  💋  🐔 Successfully generate File🌟 :",
+        `${ouput}/${key}.js`
       );
     }
+    complete && complete();
   }
   _setProperty(obj, name = "", value) {
     name = name.split(".");
@@ -179,5 +185,14 @@ module.exports = class GoogleSheetTool {
       obj = obj[name[i]];
     }
     obj[name.pop()] = value;
+  }
+  _merge(from, to) {
+    for (const key in from) {
+      if (to[key]) {
+        to[key] = { ...to[key], ...from[key] };
+      } else {
+        to[key] = from[key];
+      }
+    }
   }
 };
