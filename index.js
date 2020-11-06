@@ -1,6 +1,7 @@
 const fs = require("fs");
 const readline = require("readline");
 const path = require("path");
+const util = require("util");
 const { google } = require("googleapis");
 const TOKEN_PATH = "token.json";
 
@@ -15,6 +16,11 @@ module.exports = class GoogleSheetTool {
         zh: 2,
         en: 3,
         ar: 4,
+      },
+      ouput: {
+        path: path.resolve(process.cwd(), "./lang"),
+        module: "common",
+        ext: ".js",
       },
       SCOPES: ["https://www.googleapis.com/auth/spreadsheets"],
       ...options,
@@ -85,7 +91,11 @@ module.exports = class GoogleSheetTool {
     rl.question("请将认证码粘贴到此: ", (code) => {
       rl.close();
       oAuth2Client.getToken(code, (err, token) => {
-        if (err) return console.error("Error retrieving access token", err);
+        if (err)
+          return console.error(
+            "你被cc防火墙挡住了，请参照README 开启代理",
+            err
+          );
         oAuth2Client.setCredentials(token);
         // Store the token to disk for later program executions
         fs.writeFile(
@@ -173,18 +183,30 @@ module.exports = class GoogleSheetTool {
     console.table(result);
     const { ouput, complete } = this.options;
     for (const key in result) {
-      if (!fs.existsSync(ouput)) {
-        fs.mkdirSync(ouput, { recursive: true });
+      if (!fs.existsSync(ouput.path)) {
+        fs.mkdirSync(ouput.path, { recursive: true });
       }
-      fs.writeFileSync(
-        `${ouput}/${key}.js`,
-        `export default ${JSON.stringify(result[key], null, 2)}`,
-        "utf8"
-      );
+      const file = `${ouput.path}/${key}${ouput.ext}`;
+      switch (ouput.ext) {
+        case ".js":
+          const prefix =
+            ouput.module === "common" ? "module.exports = " : "export default ";
+          fs.writeFileSync(
+            file,
+            `${prefix}${util.inspect(result[key])}`,
+            "utf8"
+          );
+          break;
+        case ".json":
+          fs.writeFileSync(file, JSON.stringify(result[key], null, 2), "utf8");
+          break;
+        default:
+          break;
+      }
       console.log(
         "\x1b[32m",
         " 🌟  👋  💋  🐔 Successfully generate File🌟 :",
-        `${ouput}/${key}.js`
+        file
       );
     }
     complete && complete();

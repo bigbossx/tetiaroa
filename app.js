@@ -21,7 +21,11 @@ new GoogleSheetTool({
     index: 3,
     ar: 4,
   },
-  ouput: path.resolve(__dirname, "./lang"),
+  ouput: {
+    path: path.resolve(__dirname, "./lang"),
+    module: "common", // support 'json' 'common' 'es6'
+    ext: ".json",
+  },
   complete: () => {
     console.log("complete");
   },
