@@ -8,23 +8,17 @@ new GoogleSheetTool({
   batch: [
     {
       spreadsheetId: "18XOx3OVPstZAF4WI0b1QFLr4Wiirn4pKW7ABgPvw27k",
-      range: "产品运营!C2:G",
-      groups: [{ key: "keyword", range: [0, 10] }], // rang 下标从0开始,将范围内的多语言转换成数组
+      range: "Web多语言!C2:G",
     },
     {
       spreadsheetId: "18XOx3OVPstZAF4WI0b1QFLr4Wiirn4pKW7ABgPvw27k",
-      range: "Web多语言!C2:G",
+      range: "产品运营!C2:G",
     },
   ],
-  lang: {
-    zh: 2,
-    index: 3,
-    ar: 4,
-  },
   ouput: {
     path: path.resolve(__dirname, "./lang"),
-    module: "common", // support 'json' 'common' 'es6'
-    ext: ".json",
+    module: "es6", // support 'json' 'common' 'es6'
+    ext: ".js",
   },
   complete: () => {
     console.log("complete");

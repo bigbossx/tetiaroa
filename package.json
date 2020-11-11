@@ -14,16 +14,22 @@
     "rimraf": "^3.0.2"
   },
   "scripts": {
-    "start": "rimraf ./lang && node app.js"
+    "start": "rimraf ./lang && node example.js"
   },
+  "keywords": [
+    "mutil-language",
+    "googleapi",
+    "generator"
+  ],
   "files": [
     "index.js",
     "package.json",
     "README.md",
     "credentials.json",
     ".gitignore",
-    "logo.txt"
+    "logo.txt",
+    "utils.js"
   ],
-  "author": "",
+  "author": "Vision_X",
   "license": "ISC"
 }

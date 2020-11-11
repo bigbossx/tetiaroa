@@ -1,8 +1,9 @@
 const fs = require("fs");
 const readline = require("readline");
 const path = require("path");
-const util = require("util");
+const { inspect } = require("util");
 const { google } = require("googleapis");
+const Utils = require("./utils");
 const TOKEN_PATH = "token.json";
 
 // this tool rewrite from office exmaple
@@ -11,7 +12,6 @@ module.exports = class GoogleSheetTool {
     this._greeting();
     this._verifyOptions(options);
     this.options = {
-      version: "v4",
       lang: {
         zh: 2,
         en: 3,
@@ -19,7 +19,7 @@ module.exports = class GoogleSheetTool {
       },
       ouput: {
         path: path.resolve(process.cwd(), "./lang"),
-        module: "common",
+        module: "es6",
         ext: ".js",
       },
       SCOPES: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -34,19 +34,16 @@ module.exports = class GoogleSheetTool {
   // }
 
   _main() {
-    fs.readFile(
-      path.resolve(__dirname, "./credentials.json"),
-      (err, content) => {
-        if (err) return console.log("Error loading client secret file:", err);
-        // Authorize a client with credentials, then call the Google Docs API.
-        this._authorize(JSON.parse(content), this._listMajors.bind(this));
-      }
-    );
+    fs.readFile(Utils.pathResolveDir("./credentials.json"), (err, content) => {
+      if (err) return console.log("Error loading client secret file:", err);
+      // Authorize a client with credentials, then call the Google Docs API.
+      this._authorize(JSON.parse(content), this._listMajors.bind(this));
+    });
   }
   _greeting() {
     console.log(
       "\x1b[36m%s\x1b[0m",
-      fs.readFileSync(path.resolve(__dirname, "./logo.txt"), "utf-8")
+      fs.readFileSync(Utils.pathResolveDir("./logo.txt"), "utf-8")
     );
   }
   _verifyOptions(options) {
@@ -70,7 +67,7 @@ module.exports = class GoogleSheetTool {
     );
 
     // Check if we have previously stored a token.
-    fs.readFile(path.resolve(__dirname, TOKEN_PATH), (err, token) => {
+    fs.readFile(Utils.pathResolveDir(TOKEN_PATH), (err, token) => {
       if (err) return this._getNewToken(oAuth2Client, callback);
       oAuth2Client.setCredentials(JSON.parse(token));
       callback(oAuth2Client);
@@ -99,11 +96,11 @@ module.exports = class GoogleSheetTool {
         oAuth2Client.setCredentials(token);
         // Store the token to disk for later program executions
         fs.writeFile(
-          path.resolve(__dirname, TOKEN_PATH),
+          Utils.pathResolveDir(TOKEN_PATH),
           JSON.stringify(token),
           (err) => {
             if (err) console.error(err);
-            console.log("\x1b[32m", "Token stored to", TOKEN_PATH);
+            console.log("\x1b[32m%s\x1b[0m", "Token stored to", TOKEN_PATH);
           }
         );
         callback(oAuth2Client);
@@ -117,11 +114,11 @@ module.exports = class GoogleSheetTool {
    * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
    */
   _listMajors(auth) {
-    const { batch, version, customOutputCallback } = this.options;
-    const sheets = google.sheets({ version, auth });
+    const { batch, customOutputCallback } = this.options;
+    const sheets = google.sheets({ version: "v4", auth });
     let index = 0;
     let result = {};
-    batch.map(({ spreadsheetId, range, groups }) => {
+    batch.map(({ spreadsheetId, range }) => {
       sheets.spreadsheets.values.get(
         {
           spreadsheetId,
@@ -136,9 +133,9 @@ module.exports = class GoogleSheetTool {
             if (customOutputCallback) {
               temp = customOutputCallback(rows);
             } else {
-              temp = this._formatOuputData(rows, groups);
+              temp = this._formatOuputData(rows);
             }
-            this._merge(temp, result);
+            Utils.merge(temp, result);
             if (index >= batch.length) {
               this._generateFile(result);
             }
@@ -149,31 +146,38 @@ module.exports = class GoogleSheetTool {
       );
     });
   }
-  _formatOuputData(data, groups = []) {
+  _formatOuputData(data) {
     const { lang } = this.options;
     const result = {};
-    for (const key in lang) {
-      result[key] = {};
-    }
 
-    let index = 0;
-    while (index < data.length) {
-      const group = groups.find((g) => g.range[0] === index);
-      if (group) {
-        const groupData = data.slice(...group.range);
-        for (const key in lang) {
-          result[key][group.key] = groupData.map((row) => row[lang[key]]);
-        }
-        index += group.range[1];
-      } else {
-        for (const key in lang) {
-          const row = data[index];
-          if (!row[0]) {
-            continue;
+    while (data.length) {
+      const row = data.shift();
+      if (!row[0]) {
+        continue;
+      }
+      for (const key in lang) {
+        let curVal = row[lang[key]];
+        let rowKey = row[0];
+        if (Utils.is.hasColon(rowKey)) {
+          const rowKeyArr = rowKey.split(":");
+          rowKey = rowKeyArr[0];
+          const objType = rowKeyArr[1];
+          try {
+            switch (objType) {
+              case "Array":
+                curVal = eval(curVal); //  😜
+                break;
+              default:
+                break;
+            }
+          } catch (e) {
+            throw new Error("Parse Error:" + e);
           }
-          this._setProperty(result[key], row[0], row[lang[key]] || "");
         }
-        index++;
+        if (Utils.is.hasWrap(curVal)) {
+          curVal = curVal.split("\n");
+        }
+        Utils.setProperty(result, `${key}.${rowKey}`, curVal || "");
       }
     }
     return result;
@@ -191,11 +195,7 @@ module.exports = class GoogleSheetTool {
         case ".js":
           const prefix =
             ouput.module === "common" ? "module.exports = " : "export default ";
-          fs.writeFileSync(
-            file,
-            `${prefix}${util.inspect(result[key])}`,
-            "utf8"
-          );
+          fs.writeFileSync(file, `${prefix}${inspect(result[key])}`, "utf8");
           break;
         case ".json":
           fs.writeFileSync(file, JSON.stringify(result[key], null, 2), "utf8");
@@ -204,28 +204,11 @@ module.exports = class GoogleSheetTool {
           break;
       }
       console.log(
-        "\x1b[32m",
+        "\x1b[32m%s\x1b[0m",
         " 🌟  👋  💋  🐔 Successfully generate File🌟 :",
         file
       );
     }
     complete && complete();
-  }
-  _setProperty(obj, name = "", value) {
-    name = name.split(".");
-    for (var i = 0; i < name.length - 1; i++) {
-      if (typeof obj[name[i]] !== "object" || !obj[name[i]]) obj[name[i]] = {};
-      obj = obj[name[i]];
-    }
-    obj[name.pop()] = value;
-  }
-  _merge(from, to) {
-    for (const key in from) {
-      if (to[key]) {
-        to[key] = { ...to[key], ...from[key] };
-      } else {
-        to[key] = from[key];
-      }
-    }
   }
 };
