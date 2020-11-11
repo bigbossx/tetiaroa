@@ -27,7 +27,7 @@ const pathResolveDir = (file) => path.resolve(__dirname, file);
 
 const is = {
   hasColon: (val) => /:/g.test(val),
-  hasWrap: (val) => /\g/g.test(val),
+  hasWrap: (val) => /\n/g.test(val),
 };
 
 module.exports = {
