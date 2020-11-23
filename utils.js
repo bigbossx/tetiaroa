@@ -19,9 +19,10 @@ const setProperty = (obj, name = "", value) => {
   }
   const realKey = name.pop();
   if (obj[realKey]) {
-    obj[realKey] = isType(obj[realKey]) !== "Array" && [].concat(obj[realKey]);
+    if (isType(obj[realKey]) !== "Array") {
+      obj[realKey] = [].concat(obj[realKey]);
+    }
     obj[realKey] = obj[realKey].concat(value);
-    obj[realKey] = [value].concat(obj[realKey]);
   } else {
     obj[realKey] = value;
   }
