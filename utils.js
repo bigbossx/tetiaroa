@@ -9,6 +9,8 @@ const merge = (from, to) => {
   }
 };
 
+const isType = (obj) => Object.prototype.toString.call(obj).slice(8, -1);
+
 const setProperty = (obj, name = "", value) => {
   name = name.split(".");
   for (var i = 0; i < name.length - 1; i++) {
@@ -17,6 +19,8 @@ const setProperty = (obj, name = "", value) => {
   }
   const realKey = name.pop();
   if (obj[realKey]) {
+    obj[realKey] = isType(obj[realKey]) !== "Array" && [].concat(obj[realKey]);
+    obj[realKey] = obj[realKey].concat(value);
     obj[realKey] = [value].concat(obj[realKey]);
   } else {
     obj[realKey] = value;
