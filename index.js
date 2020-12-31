@@ -9,8 +9,6 @@ const TOKEN_PATH = "token.json";
 // this tool rewrite from office exmaple
 module.exports = class GoogleSheetTool {
   constructor(options) {
-    this._greeting();
-    this._verifyOptions(options);
     this.options = {
       lang: {
         zh: 2,
@@ -25,6 +23,8 @@ module.exports = class GoogleSheetTool {
       SCOPES: ["https://www.googleapis.com/auth/spreadsheets"],
       ...options,
     };
+    this._greeting();
+    this._verifyOptions(options);
     this._main();
   }
 
@@ -41,10 +41,12 @@ module.exports = class GoogleSheetTool {
     });
   }
   _greeting() {
-    console.log(
-      "\x1b[36m%s\x1b[0m",
-      fs.readFileSync(Utils.pathResolveDir("./logo.txt"), "utf-8")
-    );
+    this._logger(() => {
+      console.log(
+        "\x1b[36m%s\x1b[0m",
+        fs.readFileSync(Utils.pathResolveDir("./logo.txt"), "utf-8")
+      );
+    });
   }
   _verifyOptions(options) {
     const { docs = [] } = options;
@@ -125,7 +127,7 @@ module.exports = class GoogleSheetTool {
           range,
         },
         (err, res) => {
-          if (err) return console.log("The API returned an error: " + err);
+          if (err) return console.error("The API returned an error: " + err);
           index++;
           const rows = res.data.values;
           if (rows.length) {
@@ -183,8 +185,11 @@ module.exports = class GoogleSheetTool {
     return result;
   }
   _generateFile(result) {
-    console.log("👇👇 已获取文档数据 👇👇");
-    console.table(result);
+    this._logger(() => {
+      console.log("👇👇 已获取文档数据 👇👇");
+      console.table(result);
+    });
+
     const { ouput, complete } = this.options;
     for (const key in result) {
       if (!fs.existsSync(ouput.path)) {
@@ -203,12 +208,20 @@ module.exports = class GoogleSheetTool {
         default:
           break;
       }
-      console.log(
-        "\x1b[32m%s\x1b[0m",
-        " 🌟  👋  💋  🐔 Successfully generate File🌟 :",
-        file
-      );
+      this._logger(() => {
+        console.log(
+          "\x1b[32m%s\x1b[0m",
+          " 🌟  👋  💋  🐔 Successfully generate File🌟 :",
+          file
+        );
+      });
     }
     complete && complete();
+  }
+  _logger(fn) {
+    const { log } = this.options;
+    if (log) {
+      fn && fn();
+    }
   }
 };
