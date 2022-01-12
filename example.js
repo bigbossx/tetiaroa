@@ -5,6 +5,7 @@ process.env.HTTPS_PROXY = "http://127.0.0.1:1087";
 const GoogleSheetTool = require("./index");
 
 new GoogleSheetTool({
+  // log: true,
   batch: [
     {
       spreadsheetId: "18XOx3OVPstZAF4WI0b1QFLr4Wiirn4pKW7ABgPvw27k",
@@ -21,7 +22,7 @@ new GoogleSheetTool({
     ext: ".js",
   },
   complete: () => {
-    console.log("complete");
+    console.log("done");
   },
   // customOutputCallback: (rows) => {
   //   console.log("\x1b[36m%s\x1b[0m", "-----------------");

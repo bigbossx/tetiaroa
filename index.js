@@ -1,113 +1,118 @@
-const fs = require("fs");
 const readline = require("readline");
-const path = require("path");
 const { inspect } = require("util");
+const { readFileSync, writeFileSync, existsSync, mkdirSync } = require("fs");
 const { google } = require("googleapis");
-const Utils = require("./utils");
-const TOKEN_PATH = "token.json";
+const { name } = require("./package.json");
+const {
+  setProperty,
+  is,
+  PATH,
+  getPathFromCwd,
+  getPathFromCurrent,
+} = require("./helper");
 
 // this tool rewrite from office exmaple
-module.exports = class GoogleSheetTool {
-  constructor(options) {
-    this.options = {
-      lang: {
-        zh: 2,
-        en: 3,
-        ar: 4,
-      },
-      ouput: {
-        path: path.resolve(process.cwd(), "./lang"),
-        module: "es6",
-        ext: ".js",
-      },
-      SCOPES: ["https://www.googleapis.com/auth/spreadsheets"],
-      ...options,
-    };
-    this._greeting();
-    this._verifyOptions(options);
-    this._main();
-  }
 
-  // forceUpdate() {
-  //   fs.unlinkSync(TOKEN_PATH);
-  //   this._main();
-  // }
+let authorizeStatus = null; // 保证多个实例并彳亍时，只会进行一次授权
 
-  _main() {
-    fs.readFile(Utils.pathResolveDir("./credentials.json"), (err, content) => {
-      if (err) return console.log("Error loading client secret file:", err);
-      // Authorize a client with credentials, then call the Google Docs API.
-      this._authorize(JSON.parse(content), this._listMajors.bind(this));
-    });
-  }
-  _greeting() {
-    this._logger(() => {
-      console.log(
-        "\x1b[36m%s\x1b[0m",
-        fs.readFileSync(Utils.pathResolveDir("./logo.txt"), "utf-8")
-      );
-    });
-  }
-  _verifyOptions(options) {
-    const { docs = [] } = options;
-    for (let i = 0; i < docs.length - 1; i++) {
-      const item = docs[i];
-      if (!item.spreadsheetId) {
-        throw new Error("options spreadsheetId is required");
-      }
-      if (!item.range) {
-        throw new Error("options range is required");
-      }
-    }
-  }
-  _authorize(credentials, callback) {
-    const { client_secret, client_id, redirect_uris } = credentials.installed;
-    const oAuth2Client = new google.auth.OAuth2(
-      client_id,
-      client_secret,
-      redirect_uris[0]
-    );
-
-    // Check if we have previously stored a token.
-    fs.readFile(Utils.pathResolveDir(TOKEN_PATH), (err, token) => {
-      if (err) return this._getNewToken(oAuth2Client, callback);
-      oAuth2Client.setCredentials(JSON.parse(token));
-      callback(oAuth2Client);
-    });
-  }
-
-  _getNewToken(oAuth2Client, callback) {
-    const { SCOPES } = this.options;
+const authorize = async (options) => {
+  const credentials = JSON.parse(
+    readFileSync(
+      getPathFromCurrent(PATH.credentials) // this json cv from google developer
+    )
+  );
+  const { client_secret, client_id, redirect_uris } = credentials.installed;
+  const oAuth2Client = await new google.auth.OAuth2(
+    client_id,
+    client_secret,
+    redirect_uris[0]
+  );
+  try {
+    const token = readFileSync(PATH.token);
+    oAuth2Client.setCredentials(JSON.parse(token));
+    return oAuth2Client;
+  } catch (error) {
     const authUrl = oAuth2Client.generateAuthUrl({
       access_type: "offline",
-      scope: SCOPES,
+      scope: options.scope,
     });
     console.log("\x1b[36m%s\x1b[0m", "请访问该链接以获取google认证:", authUrl);
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
-    rl.question("请将认证码粘贴到此: ", (code) => {
-      rl.close();
-      oAuth2Client.getToken(code, (err, token) => {
-        if (err)
-          return console.error(
-            "你被cc防火墙挡住了，请参照README 开启代理",
-            err
-          );
-        oAuth2Client.setCredentials(token);
-        // Store the token to disk for later program executions
-        fs.writeFile(
-          Utils.pathResolveDir(TOKEN_PATH),
-          JSON.stringify(token),
-          (err) => {
-            if (err) console.error(err);
-            console.log("\x1b[32m%s\x1b[0m", "Token stored to", TOKEN_PATH);
-          }
-        );
-        callback(oAuth2Client);
+    const code = await new Promise((res) => {
+      rl.question("请将认证码粘贴到此: ", (c) => {
+        rl.close();
+        res(c);
       });
     });
+    const token = await new Promise((resolve, reject) => {
+      oAuth2Client.getToken(code, (err, t) => {
+        if (err) {
+          reject(`${err}\n请参照README 开启代理`);
+        }
+        resolve(t);
+      });
+    });
+    oAuth2Client.setCredentials(token);
+    writeFileSync(
+      getPathFromCurrent(PATH.token),
+      JSON.stringify(token),
+      "utf-8"
+    );
+    return oAuth2Client;
+  }
+};
+
+module.exports = class Tetiaroa {
+  constructor(options) {
+    this.options = this.mergeOptions(options);
+    this.run();
+  }
+
+  mergeOptions(userConfig) {
+    const options = {
+      lang: {
+        zh: 2,
+        en: 3,
+        ar: 4,
+      },
+      ouput: {
+        path: getPathFromCwd(PATH.lang),
+        module: "es6",
+        ext: ".js",
+      },
+      scope: ["https://www.googleapis.com/auth/spreadsheets"],
+      ...userConfig,
+    };
+
+    const truely =
+      options.batch &&
+      options.batch.length &&
+      options.batch.every((b) => b.spreadsheetId && b.range);
+
+    if (!truely) {
+      this.error(
+        "config error for not spreadsheetId or range in batch, or batch in not array"
+      );
+    }
+    return options;
+  }
+
+  async run() {
+    this.logger(() => {
+      console.log(
+        "\x1b[36m%s\x1b[0m",
+        readFileSync(getPathFromCurrent(PATH.logo))
+      );
+    });
+
+    const auth = await (authorizeStatus ||
+      (authorizeStatus = authorize(this.options)));
+    const sheets = await this.getSheetBatch(auth);
+    const afterSheets = await this.resolveSheet(sheets);
+    await this.generateOutput(afterSheets);
   }
 
   /**
@@ -115,100 +120,74 @@ module.exports = class GoogleSheetTool {
    * @see https://docs.google.com/spreadsheets/d/18XOx3OVPstZAF4WI0b1QFLr4Wiirn4pKW7ABgPvw27k/edit#gid=0 shayla
    * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
    */
-  _listMajors(auth) {
+  async getSheetBatch(auth) {
     const { batch, customOutputCallback } = this.options;
     const sheets = google.sheets({ version: "v4", auth });
-    let index = 0;
-    let result = {};
-    batch.map(({ spreadsheetId, range }) => {
-      sheets.spreadsheets.values.get(
-        {
-          spreadsheetId,
-          range,
-        },
-        (err, res) => {
-          if (err) return console.error("The API returned an error: " + err);
-          index++;
-          const rows = res.data.values;
-          if (rows.length) {
-            let temp;
-            if (customOutputCallback) {
-              temp = customOutputCallback(rows);
-            } else {
-              temp = this._formatOuputData(rows);
-            }
-            Utils.merge(temp, result);
-            if (index >= batch.length) {
-              this._generateFile(result);
-            }
-          } else {
-            console.log("No data found.");
-          }
-        }
-      );
-    });
+    const rows = await Promise.all(
+      batch.map(
+        (b) =>
+          new Promise((resolve, reject) => {
+            sheets.spreadsheets.values.get(b, (err, res) => {
+              if (err) {
+                return reject(err);
+              }
+              if (customOutputCallback) {
+                resolve(customOutputCallback(res.data.values));
+              } else {
+                resolve(res.data.values);
+              }
+            });
+          })
+      )
+    );
+    return rows.reduce((per, cur) => per.concat(cur), []);
   }
-  _formatOuputData(data) {
+
+  async resolveSheet(rows) {
     const { lang } = this.options;
     const result = {};
 
-    while (data.length) {
-      const row = data.shift();
+    while (rows.length) {
+      const row = rows.shift();
       if (!row[0]) {
         continue;
       }
       for (const key in lang) {
         let curVal = row[lang[key]];
         let rowKey = row[0];
-        if (Utils.is.hasColon(rowKey)) {
-          const rowKeyArr = rowKey.split(":");
-          rowKey = rowKeyArr[0];
-          const objType = rowKeyArr[1];
-          try {
-            switch (objType) {
-              case "Array":
-                curVal = eval(curVal); //  😜
-                break;
-              default:
-                break;
-            }
-          } catch (e) {
-            throw new Error("Parse Error:" + e);
-          }
-        }
-        if (Utils.is.hasWrap(curVal)) {
+        if (is.hasWrap(curVal)) {
           curVal = curVal.split("\n");
         }
-        Utils.setProperty(result, `${key}.${rowKey}`, curVal || "");
+        setProperty(result, `${key}.${rowKey}`, curVal || "");
       }
     }
     return result;
   }
-  _generateFile(result) {
-    this._logger(() => {
+
+  async generateOutput(result) {
+    this.logger(() => {
       console.log("👇👇 已获取文档数据 👇👇");
       console.table(result);
     });
-
     const { ouput, complete } = this.options;
     for (const key in result) {
-      if (!fs.existsSync(ouput.path)) {
-        fs.mkdirSync(ouput.path, { recursive: true });
+      if (!existsSync(ouput.path)) {
+        mkdirSync(ouput.path, { recursive: true });
       }
       const file = `${ouput.path}/${key}${ouput.ext}`;
       switch (ouput.ext) {
         case ".js":
           const prefix =
             ouput.module === "common" ? "module.exports = " : "export default ";
-          fs.writeFileSync(file, `${prefix}${inspect(result[key])}`, "utf8");
+          writeFileSync(file, `${prefix}${inspect(result[key])}`, "utf-8");
           break;
         case ".json":
-          fs.writeFileSync(file, JSON.stringify(result[key], null, 2), "utf8");
+          writeFileSync(file, JSON.stringify(result[key], null, 2), "utf-8");
           break;
         default:
-          break;
+          this.error("not support output file ext");
       }
-      this._logger(() => {
+      this.logger(() => {
         console.log(
           "\x1b[32m%s\x1b[0m",
           " 🌟  👋  💋  🐔 Successfully generate File🌟 :",
@@ -218,10 +197,15 @@ module.exports = class GoogleSheetTool {
     }
     complete && complete();
   }
-  _logger(fn) {
+
+  logger(fn) {
     const { log } = this.options;
     if (log) {
       fn && fn();
     }
+  }
+  error(message) {
+    console.log("\x1b[31m%s\x1b[0m", `[${name}] ${message}`);
+    process.exit(1);
   }
 };

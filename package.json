@@ -1,6 +1,6 @@
 {
   "name": "tetiaroa",
-  "version": "0.0.9",
+  "version": "1.0.0",
   "description": "a useful multi-language automatic generation tool",
   "repository": {
     "type": "git",
@@ -31,5 +31,8 @@
     "utils.js"
   ],
   "author": "Vision_X",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": {
+    "node": ">=10.0.0"
+  }
 }

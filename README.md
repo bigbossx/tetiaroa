@@ -37,7 +37,6 @@ process.env.HTTPS_PROXY = "http://127.0.0.1:1087";
 config in google doc
 | key | value | ouput |
 | :------------------: | :------------------: | :------------------: |
-| num:Array | [1,2,3,4] | [1,2,3,4] as Array |
 | rank.title | hhh | rank:{title:"hhh"} |
 | key | one | key:['one','two'] |
 | key | two | key:['one','two'] |
