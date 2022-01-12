@@ -9,7 +9,7 @@ the fucking name tetiaroa comes from a beautiful island,don’t ask me why I too
 ## install
 
 ```
-  npm i tetiaroa
+  npm i tetiaroa -D
 ```
 
 ## Usage
@@ -35,6 +35,7 @@ process.env.HTTPS_PROXY = "http://127.0.0.1:1087";
 ```
 
 config in google doc
+
 | key | value | ouput |
 | :------------------: | :------------------: | :------------------: |
 | rank.title | hhh | rank:{title:"hhh"} |
