@@ -32,7 +32,7 @@ const authorize = async (options) => {
     `http://localhost:${port}`
   );
   try {
-    const token = readFileSync(PATH.token);
+    const token = readFileSync(getPathFromCurrent(PATH.token));
     oAuth2Client.setCredentials(JSON.parse(token));
     return oAuth2Client;
   } catch (error) {
