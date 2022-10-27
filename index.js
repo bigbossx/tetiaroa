@@ -1,7 +1,9 @@
-const readline = require("readline");
 const { inspect } = require("util");
 const { readFileSync, writeFileSync, existsSync, mkdirSync } = require("fs");
 const { google } = require("googleapis");
+const http = require("http");
+const url = require("url");
+const getPort = require("get-port");
 const { name } = require("./package.json");
 const {
   setProperty,
@@ -21,32 +23,39 @@ const authorize = async (options) => {
       getPathFromCurrent(PATH.credentials) // this json cv from google developer
     )
   );
-  const { client_secret, client_id, redirect_uris } = credentials.installed;
+  const { client_secret, client_id } = credentials.installed;
+  const port = await getPort();
+
   const oAuth2Client = await new google.auth.OAuth2(
     client_id,
     client_secret,
-    redirect_uris[0]
+    `http://localhost:${port}`
   );
   try {
     const token = readFileSync(PATH.token);
     oAuth2Client.setCredentials(JSON.parse(token));
     return oAuth2Client;
   } catch (error) {
+    let getCodePromiseResolve;
+    const getCode = new Promise((resolve) => {
+      getCodePromiseResolve = resolve;
+    });
+
+    const closeServer = await createHttpServer(port, async (req, res) => {
+      const queryObject = url.parse(req.url, true).query;
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end("It worked! ! ! Just close this tab");
+      getCodePromiseResolve(queryObject.code);
+    });
+
     const authUrl = oAuth2Client.generateAuthUrl({
       access_type: "offline",
       scope: options.scope,
     });
+
     console.log("\x1b[36m%s\x1b[0m", "请访问该链接以获取google认证:", authUrl);
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    const code = await new Promise((res) => {
-      rl.question("请将认证码粘贴到此: ", (c) => {
-        rl.close();
-        res(c);
-      });
-    });
+    const code = await getCode;
+
     const token = await new Promise((resolve, reject) => {
       oAuth2Client.getToken(code, (err, t) => {
         if (err) {
@@ -61,11 +70,20 @@ const authorize = async (options) => {
       JSON.stringify(token),
       "utf-8"
     );
+    await closeServer();
     return oAuth2Client;
   }
 };
 
-module.exports = class Tetiaroa {
+const createHttpServer = async (port, callback) =>
+  new Promise((resolve) => {
+    const server = http.createServer(callback);
+    server.listen(port, () => {
+      resolve(() => new Promise((res) => server.close(res)));
+    });
+  });
+
+module.exports = class GoogleSheetTool {
   constructor(options) {
     this.options = this.mergeOptions(options);
     this.run();
