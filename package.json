@@ -29,7 +29,8 @@
     "credentials.json",
     ".gitignore",
     "logo.txt",
-    "utils.js"
+    "utils.js",
+    "helper.js"
   ],
   "author": "Vision_X",
   "license": "ISC",
