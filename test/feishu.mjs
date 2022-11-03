@@ -1,31 +1,25 @@
-import GoogleSheetTool from "../lib/google/index.js";
+import FeishuSheetTool from "../lib/feishu/index.mjs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-process.env.HTTP_PROXY = "http://127.0.0.1:1087";
-process.env.HTTPS_PROXY = "http://127.0.0.1:1087";
-
-new GoogleSheetTool({
+new FeishuSheetTool({
   // log: true,
   batch: [
     {
-      spreadsheetId: "18XOx3OVPstZAF4WI0b1QFLr4Wiirn4pKW7ABgPvw27k",
-      range: "Web多语言!C2:G",
-    },
-    {
-      spreadsheetId: "18XOx3OVPstZAF4WI0b1QFLr4Wiirn4pKW7ABgPvw27k",
-      range: "产品运营!C2:G",
+      spreadsheetId: "shtcn9zTzJMl4twIj77Ske0BpWg",
+      range: "gurXqj!D2:F100",
     },
   ],
-  lang: {
-    ar: 1,
-    en: 2,
-  },
   ouput: {
     path: resolve(__dirname, "./lang"),
     module: "es6", // support 'json' 'common' 'es6'
     ext: ".js",
+  },
+  lang: {
+    ar: 1,
+    en: 2,
   },
   complete: () => {
     console.log("done");
