@@ -2,14 +2,20 @@
 
 > a useful multi-language automatic generation tool
 
+## support
+
+- google sheet
+- feishu sheet
+
 ## why tetiaroa?
 
-the fucking name tetiaroa comes from a beautiful island,don’t ask me why I took this name, I don’t know too. this tool just reduce U cv times,nothing else. it fork from gooleapi,you can also customize your tools according to the documentation https://developers.google.com/sheets/api ,enjoy it!
+Quickly generate files in multiple languages, no more copy needed!
 
 ## install
 
-```
-  npm i tetiaroa -D
+```bash
+  npm i tetiaroa@1 -D # commonjs
+  npm i tetiaroa@latest -D # esm
 ```
 
 ## Usage
@@ -36,11 +42,11 @@ process.env.HTTPS_PROXY = "http://127.0.0.1:1087";
 
 config in google doc
 
-| key | value | ouput |
-| :------------------: | :------------------: | :------------------: |
-| rank.title | hhh | rank:{title:"hhh"} |
-| key | one | key:['one','two'] |
-| key | two | key:['one','two'] |
+|    key     | value |       ouput        |
+| :--------: | :---: | :----------------: |
+| rank.title |  hhh  | rank:{title:"hhh"} |
+|    key     |  one  | key:['one','two']  |
+|    key     |  two  | key:['one','two']  |
 
 ```js
 // js file
