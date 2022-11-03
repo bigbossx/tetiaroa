@@ -1,7 +1,5 @@
-import GoogleSheetTool from "../lib/google/index.mjs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const GoogleSheetTool = require("..");
+const { resolve } = require("path");
 
 process.env.HTTP_PROXY = "http://127.0.0.1:1087";
 process.env.HTTPS_PROXY = "http://127.0.0.1:1087";

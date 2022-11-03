@@ -1,8 +1,5 @@
-import FeishuSheetTool from "../lib/feishu/index.mjs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const { FeishuSheetTool } = require("..");
+const { resolve } = require("path");
 
 new FeishuSheetTool({
   // log: true,
